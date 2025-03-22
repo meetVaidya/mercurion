@@ -111,20 +111,18 @@ export default function Page() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
+    <div className="min-h-screen bg-background text-foreground p-8 max-w-7xl">
       <div className="container mx-auto space-y-6">
         {/* Page Title */}
         <h1 className="text-3xl font-bold mb-4">
-          Create a New Tutorial Script
+          Generate a script for your video
         </h1>
 
         {/* Title Input Card */}
         <Card className="bg-secondary shadow-md">
           <CardHeader>
-            <CardTitle>Tutorial Title</CardTitle>
-            <CardDescription>
-              Enter the title for your tutorial.
-            </CardDescription>
+            <CardTitle>Video Title</CardTitle>
+            <CardDescription>Enter the title for your content.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
@@ -198,9 +196,9 @@ export default function Page() {
                     <p className="text-sm text-muted-foreground mb-2">
                       {step.description}
                     </p>
-                    <Badge variant="secondary" className="text-wrap text-xs">
+                    <p className="break-words text-xs">
                       Visual Suggestions: {step.visual_suggestions}
-                    </Badge>
+                    </p>
                   </CardContent>
                 </Card>
               ))}

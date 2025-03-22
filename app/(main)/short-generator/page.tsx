@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { CalendarIcon, X } from "lucide-react";
-import { ChangeEvent, DragEvent, useState } from "react";
+import { CalendarIcon, Circle, X } from "lucide-react";
+import { ChangeEvent, DragEvent, useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -45,7 +45,7 @@ export default function ShortPage() {
 
   // Calendar state (publish date)
   const today = new Date().toISOString().split("T")[0];
-  const [publishDate, setPublishDate] = useState(today);
+  const [publishDate, setPublishDate] = useState<Date | null>(new Date());
 
   // Privacy status and schedule
   const [privacyStatus, setPrivacyStatus] = useState("public");
@@ -53,6 +53,7 @@ export default function ShortPage() {
 
   // Status message after submission
   const [uploadStatus, setUploadStatus] = useState("");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null); // State to store video URL from response
 
   // --- Handlers for file drops/selection ---
   const handleVideoFileSelect = (file: File) => {
@@ -129,6 +130,7 @@ export default function ShortPage() {
   // --- Form submission handler ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUploadStatus("uploading"); // Set status to uploading
 
     // Create FormData to send files and meta-data
     const formData = new FormData();
@@ -136,21 +138,61 @@ export default function ShortPage() {
     if (thumbnailFile) formData.append("thumbnail", thumbnailFile);
     formData.append("title", title);
     formData.append("description", description);
-    formData.append("tags", JSON.stringify(tagList));
-    formData.append("publishDate", publishDate);
-    formData.append("privacyStatus", privacyStatus);
-    if (privacyStatus === "private") {
-      formData.append("scheduleDays", day.toString());
-    }
+    formData.append("tags", tagList.join(",")); // Changed to comma-separated string
+    formData.append("privacy_status", privacyStatus); // Changed to match backend
+    formData.append("day", day.toString()); // Changed to match backend
 
-    // Simulate an upload submission (replace with actual API call)
     try {
-      // await your upload API call here with formData.
-      setUploadStatus("Upload successful!");
-    } catch (error) {
-      setUploadStatus("Upload failed!");
+      const response = await fetch("/upload", {
+        // Changed endpoint to /upload
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUploadStatus("Upload successful!");
+        setVideoUrl(data.video_url); // Store the video URL
+        // Optionally reset form fields after successful upload
+        setVideoFile(null);
+        setThumbnailFile(null);
+        setTitle("");
+        setDescription("");
+        setTagList([]);
+        setTagInput("");
+        setPublishDate(new Date());
+        setPrivacyStatus("public");
+        setDay(0);
+      } else {
+        setUploadStatus(`Upload failed: ${data.error || "Unknown error"}`); // Show error from backend or generic message
+        setVideoUrl(null);
+      }
+    } catch (error: any) {
+      setUploadStatus(`Upload failed: ${error.message || "Network error"}`); // Handle network errors
+      setVideoUrl(null);
     }
   };
+
+  useEffect(() => {
+    const loadDefaultVideo = async () => {
+      try {
+        const response = await fetch("/5_final_output.mp4");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const blob = await response.blob();
+        const defaultVideoFile = new File([blob], "default-video.mp4", {
+          type: "video/mp4",
+        });
+        setVideoFile(defaultVideoFile);
+      } catch (error) {
+        console.error("Error loading default video:", error);
+      }
+    };
+
+    loadDefaultVideo();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -332,13 +374,19 @@ export default function ShortPage() {
                         variant={"outline"}
                         className={cn("w-[240px] pl-3 text-left font-normal")}
                       >
-                        <span>Pick a date</span>
+                        {publishDate ? (
+                          <span>{publishDate.toLocaleDateString()}</span>
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
+                        selected={publishDate}
+                        onSelect={setPublishDate}
                         disabled={(date) =>
                           date > new Date() || date < new Date("1900-01-01")
                         }
@@ -384,15 +432,47 @@ export default function ShortPage() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button type="submit" form="" className="w-full">
-                Upload Video
+              <Button
+                type="submit"
+                form=""
+                className="w-full"
+                disabled={uploadStatus === "uploading"}
+              >
+                {uploadStatus === "uploading" ? (
+                  <svg
+                    className="animate-spin h-5 w-5 mr-2"
+                    viewBox="0 0 24 24"
+                  >
+                    <Circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                  </svg>
+                ) : null}
+                {uploadStatus === "uploading" ? "Uploading..." : "Upload Video"}
               </Button>
             </CardFooter>
           </Card>
         </div>
 
         {uploadStatus && (
-          <p className="mt-4 text-lg text-center">{uploadStatus}</p>
+          <p className="mt-4 text-lg text-center">
+            {uploadStatus}{" "}
+            {videoUrl && uploadStatus === "Upload successful!" && (
+              <a
+                href={videoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 underline"
+              >
+                View on YouTube
+              </a>
+            )}
+          </p>
         )}
       </div>
     </div>
