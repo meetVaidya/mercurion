@@ -36,6 +36,7 @@ export default function UploadPage() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
 
   // Text states
+  const [context, setContext] = useState(""); // New state for context input
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -44,8 +45,8 @@ export default function UploadPage() {
   const [tagList, setTagList] = useState<string[]>([]);
 
   // Calendar state (publish date)
-  const today = new Date().toISOString().split("T")[0];
-  const [publishDate, setPublishDate] = useState(today);
+  const today = new Date();
+  const [publishDate, setPublishDate] = useState<Date | undefined>(today);
 
   // Privacy status and schedule
   const [privacyStatus, setPrivacyStatus] = useState("public");
@@ -53,6 +54,7 @@ export default function UploadPage() {
 
   // Status message after submission
   const [uploadStatus, setUploadStatus] = useState("");
+  const [generateStatus, setGenerateStatus] = useState(""); // Status for generation
 
   // --- Handlers for file drops/selection ---
   const handleVideoFileSelect = (file: File) => {
@@ -102,7 +104,6 @@ export default function UploadPage() {
     const value = e.target.value;
     setTagInput(value);
 
-    // Check if a comma was typed
     if (value.includes(",")) {
       const newTag = value.split(",")[0].trim();
       if (newTag && !tagList.includes(newTag)) {
@@ -126,33 +127,80 @@ export default function UploadPage() {
     setTagList(tagList.filter((tag) => tag !== tagToRemove));
   };
 
+  // --- Generate title and description handler ---
+  const handleGenerateDetails = async () => {
+    if (!context.trim()) {
+      setGenerateStatus("Please enter context for the video.");
+      return;
+    }
+
+    setGenerateStatus("Generating...");
+    try {
+      const response = await fetch("http://localhost:5000/generate_details", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ context }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setTitle(data.title);
+        setDescription(data.description);
+        setGenerateStatus("Title and description generated successfully!");
+      } else {
+        setGenerateStatus(
+          `Failed to generate: ${data.error || "Unknown error"}`,
+        );
+      }
+    } catch (error: any) {
+      setGenerateStatus(
+        `Generation failed: ${error.message || "Network error"}`,
+      );
+    }
+  };
+
   // --- Form submission handler ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setUploadStatus("Uploading...");
 
-    // Create FormData to send files and meta-data
     const formData = new FormData();
     if (videoFile) formData.append("video", videoFile);
     if (thumbnailFile) formData.append("thumbnail", thumbnailFile);
     formData.append("title", title);
     formData.append("description", description);
-    formData.append("tags", JSON.stringify(tagList));
-    formData.append("publishDate", publishDate);
-    formData.append("privacyStatus", privacyStatus);
-    if (privacyStatus === "private") {
-      formData.append("scheduleDays", day.toString());
-    }
-    //send the form data to the server
+    formData.append("tags", tagList.join(","));
+    formData.append("privacy_status", privacyStatus);
+    formData.append("day", day.toString());
 
-    
-
-
-    // Simulate an upload submission (replace with actual API call)
     try {
-      // await your upload API call here with formData.
-      setUploadStatus("Upload successful!");
-    } catch (error) {
-      setUploadStatus("Upload failed!");
+      const response = await fetch("http://localhost:5000/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setUploadStatus("Upload successful!");
+        setVideoFile(null);
+        setThumbnailFile(null);
+        setTitle("");
+        setDescription("");
+        setTagList([]);
+        setTagInput("");
+        setContext(""); // Reset context
+        setPublishDate(today);
+        setPrivacyStatus("public");
+        setDay(0);
+      } else {
+        setUploadStatus(`Upload failed: ${data.error || "Unknown error"}`);
+      }
+    } catch (error: any) {
+      setUploadStatus(`Upload failed: ${error.message || "Network error"}`);
     }
   };
 
@@ -166,13 +214,7 @@ export default function UploadPage() {
           </h1>
         </header>
 
-        <div
-          className="
-            grid
-            md:grid-cols-[1fr_1fr]
-            gap-4
-          "
-        >
+        <div className="grid md:grid-cols-[1fr_1fr] gap-4">
           {/* Middle Column: Two Stacked Cards */}
           <div className="flex flex-col gap-6">
             {/* Video File Card */}
@@ -271,9 +313,32 @@ export default function UploadPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Form */}
-              <form id="upload-form" onSubmit={handleSubmit} className="space-y-6">
+              {/* Context Input and Generate Button */}
+              <div className="space-y-2">
+                <Label htmlFor="context">Video Context</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    id="context"
+                    value={context}
+                    onChange={(e) => setContext(e.target.value)}
+                    placeholder="Describe the video content (e.g., 'A tutorial on baking cookies')"
+                  />
+                  <Button onClick={handleGenerateDetails}>
+                    Generate Details
+                  </Button>
+                </div>
+                {generateStatus && (
+                  <p className="text-sm text-gray-500">{generateStatus}</p>
+                )}
+              </div>
 
+              {/* Form */}
+              <form
+                id="upload-form"
+                onSubmit={handleSubmit}
+                className="space-y-6"
+              >
                 {/* Title */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
@@ -337,16 +402,20 @@ export default function UploadPage() {
                         variant={"outline"}
                         className={cn("w-[240px] pl-3 text-left font-normal")}
                       >
-                        <span>Pick a date</span>
+                        {publishDate ? (
+                          <span>{publishDate.toLocaleDateString()}</span>
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
-                        }
+                        selected={publishDate}
+                        onSelect={setPublishDate}
+                        disabled={(date) => date < new Date("1900-01-01")}
                         initialFocus
                       />
                     </PopoverContent>
@@ -389,11 +458,15 @@ export default function UploadPage() {
               </form>
             </CardContent>
             <CardFooter>
-  <Button type="submit" form="upload-form" className="w-full">
-    Upload Video
-  </Button>
-</CardFooter>
-
+              <Button
+                type="submit"
+                form="upload-form"
+                className="w-full"
+                disabled={uploadStatus === "Uploading..."}
+              >
+                Upload Video
+              </Button>
+            </CardFooter>
           </Card>
         </div>
 

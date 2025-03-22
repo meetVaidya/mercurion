@@ -2,14 +2,8 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -20,7 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { CalendarIcon, Circle, X } from "lucide-react";
-import { ChangeEvent, DragEvent, useEffect, useState } from "react";
+import { ChangeEvent, DragEvent, useState } from "react";
 import {
   Card,
   CardContent,
@@ -32,7 +26,6 @@ import {
 
 export default function ShortPage() {
   // File and preview states
-  const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
 
   // Text states
@@ -43,10 +36,6 @@ export default function ShortPage() {
   const [tagInput, setTagInput] = useState("");
   const [tagList, setTagList] = useState<string[]>([]);
 
-  // Calendar state (publish date)
-  const today = new Date().toISOString().split("T")[0];
-  const [publishDate, setPublishDate] = useState<Date | null>(new Date());
-
   // Privacy status and schedule
   const [privacyStatus, setPrivacyStatus] = useState("public");
   const [day, setDay] = useState(0);
@@ -56,21 +45,9 @@ export default function ShortPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null); // State to store video URL from response
 
   // --- Handlers for file drops/selection ---
-  const handleVideoFileSelect = (file: File) => {
-    if (file) {
-      setVideoFile(file);
-    }
-  };
-
   const handleThumbnailFileSelect = (file: File) => {
     if (file) {
       setThumbnailFile(file);
-    }
-  };
-
-  const handleVideoChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      handleVideoFileSelect(e.target.files[0]);
     }
   };
 
@@ -86,9 +63,6 @@ export default function ShortPage() {
 
   const handleVideoDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleVideoFileSelect(e.dataTransfer.files[0]);
-    }
   };
 
   const handleThumbnailDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -134,7 +108,12 @@ export default function ShortPage() {
 
     // Create FormData to send files and meta-data
     const formData = new FormData();
-    if (videoFile) formData.append("video", videoFile);
+    const videoInput = e.currentTarget.elements.namedItem(
+      "video",
+    ) as HTMLInputElement;
+    if (videoInput && videoInput.files && videoInput.files[0]) {
+      formData.append("video", videoInput.files[0]); // Access video file from event target
+    }
     if (thumbnailFile) formData.append("thumbnail", thumbnailFile);
     formData.append("title", title);
     formData.append("description", description);
@@ -143,8 +122,7 @@ export default function ShortPage() {
     formData.append("day", day.toString()); // Changed to match backend
 
     try {
-      const response = await fetch("/upload", {
-        // Changed endpoint to /upload
+      const response = await fetch("http://localhost:5000/upload", {
         method: "POST",
         body: formData,
       });
@@ -155,13 +133,11 @@ export default function ShortPage() {
         setUploadStatus("Upload successful!");
         setVideoUrl(data.video_url); // Store the video URL
         // Optionally reset form fields after successful upload
-        setVideoFile(null);
         setThumbnailFile(null);
         setTitle("");
         setDescription("");
         setTagList([]);
         setTagInput("");
-        setPublishDate(new Date());
         setPrivacyStatus("public");
         setDay(0);
       } else {
@@ -174,43 +150,17 @@ export default function ShortPage() {
     }
   };
 
-  useEffect(() => {
-    const loadDefaultVideo = async () => {
-      try {
-        const response = await fetch("/5_final_output.mp4");
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const blob = await response.blob();
-        const defaultVideoFile = new File([blob], "default-video.mp4", {
-          type: "video/mp4",
-        });
-        setVideoFile(defaultVideoFile);
-      } catch (error) {
-        console.error("Error loading default video:", error);
-      }
-    };
-
-    loadDefaultVideo();
-  }, []);
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <header className="mb-6">
           <h1 className="text-4xl font-bold text-left">
-            Upload Video to YouTube
+            Long form to Short form Content Generator
           </h1>
         </header>
 
-        <div
-          className="
-            grid
-            md:grid-cols-[1fr_1fr]
-            gap-4
-          "
-        >
+        <div className="grid md:grid-cols-[1fr_1fr] gap-4">
           {/* Middle Column: Two Stacked Cards */}
           <div className="flex flex-col gap-6">
             {/* Video File Card */}
@@ -235,23 +185,10 @@ export default function ShortPage() {
                   <Input
                     type="file"
                     id="video"
-                    onChange={handleVideoChange}
+                    name="video" // Added name attribute to access in form submission
                     accept="video/*"
                     className="hidden"
                   />
-                </div>
-                <div className="mt-4 flex items-center justify-center border rounded-md p-2">
-                  {videoFile ? (
-                    <video
-                      src={URL.createObjectURL(videoFile)}
-                      controls
-                      className="max-h-40 w-full object-contain"
-                    />
-                  ) : (
-                    <p className="text-center text-gray-500">
-                      Video preview will appear here.
-                    </p>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -366,7 +303,7 @@ export default function ShortPage() {
                 </div>
 
                 {/* Publish Date */}
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="publishDate">Publish Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -382,7 +319,7 @@ export default function ShortPage() {
                         <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    {/* <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
                         selected={publishDate}
@@ -394,7 +331,7 @@ export default function ShortPage() {
                       />
                     </PopoverContent>
                   </Popover>
-                </div>
+                </div> */}
 
                 {/* Privacy Status */}
                 <div className="space-y-2">
@@ -429,33 +366,35 @@ export default function ShortPage() {
                     />
                   </div>
                 )}
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={uploadStatus === "uploading"}
+                >
+                  {uploadStatus === "uploading" ? (
+                    <svg
+                      className="animate-spin h-5 w-5 mr-2"
+                      viewBox="0 0 24 24"
+                    >
+                      <Circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                    </svg>
+                  ) : null}
+                  {uploadStatus === "uploading"
+                    ? "Uploading..."
+                    : "Upload Video"}
+                </Button>
               </form>
             </CardContent>
-            <CardFooter>
-              <Button
-                type="submit"
-                form=""
-                className="w-full"
-                disabled={uploadStatus === "uploading"}
-              >
-                {uploadStatus === "uploading" ? (
-                  <svg
-                    className="animate-spin h-5 w-5 mr-2"
-                    viewBox="0 0 24 24"
-                  >
-                    <Circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                  </svg>
-                ) : null}
-                {uploadStatus === "uploading" ? "Uploading..." : "Upload Video"}
-              </Button>
-            </CardFooter>
+            {/* Remove CardFooter since the button is now inside the form */}
           </Card>
         </div>
 
