@@ -61,9 +61,9 @@ const data = {
       icon: IconFolder,
     },
     {
-      title: "Short Generator",
-      url: "/short-generator",
-      icon: IconUsers,
+      title: "Recommendations",
+      url: "/recommendations",
+      icon: IconReport,
     },
   ],
   navClouds: [
@@ -124,11 +124,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
+              className="data-[slot=sidebar-menu-button]:!p-1.5 bg-primary-foreground hover:bg-primary-foreground/10 rounded-full"
             >
               <a href="#">
                 <IconInnerShadowTop className="!size-5" />
-                <span className="text-base font-semibold">Mercurion</span>
+                <span className="font-semibold text-2xl">Mercurion</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
