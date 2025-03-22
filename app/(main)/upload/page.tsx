@@ -142,6 +142,10 @@ export default function UploadPage() {
     if (privacyStatus === "private") {
       formData.append("scheduleDays", day.toString());
     }
+    //send the form data to the server
+
+    
+
 
     // Simulate an upload submission (replace with actual API call)
     try {
@@ -268,7 +272,8 @@ export default function UploadPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Form */}
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form id="upload-form" onSubmit={handleSubmit} className="space-y-6">
+
                 {/* Title */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
@@ -384,10 +389,11 @@ export default function UploadPage() {
               </form>
             </CardContent>
             <CardFooter>
-              <Button type="submit" form="" className="w-full">
-                Upload Video
-              </Button>
-            </CardFooter>
+  <Button type="submit" form="upload-form" className="w-full">
+    Upload Video
+  </Button>
+</CardFooter>
+
           </Card>
         </div>
 
