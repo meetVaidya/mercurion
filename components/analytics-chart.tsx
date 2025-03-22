@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  Legend,
 } from "recharts";
 
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -51,20 +52,33 @@ interface AnalyticsData {
 
 const chartConfig = {
   audienceRetention: {
-    // Changed config to reflect audience retention data
-    label: "Audience Retention",
+    label: "Average View Duration (seconds)",
+    color: "red", // Brighter red color
   },
-  retentionRate: {
-    // Assuming retention rate is a key in your audience_retention data
-    label: "Retention Rate",
-    color: "var(--primary)",
+  peakEngagementViews: {
+    label: "Views",
+    color: "green", // Brighter green color
+  },
+  peakEngagementLikes: {
+    label: "Likes",
+    color: "orange", // Brighter orange color
+  },
+  peakEngagementComments: {
+    label: "Comments",
+    color: "blue", // Brighter blue color (or choose another bright color)
   },
 } satisfies ChartConfig;
 
-interface RetentionDataPoint {
-  time: number; // Time in seconds or percentage, adjust accordingly
-  retentionRate: number; // Retention rate at that time point
+interface ChartDataPoint {
+  date: string; // Date for X-axis
+  audienceRetention?: number;
+  peakEngagementViews?: number;
+  peakEngagementLikes?: number;
+  peakEngagementComments?: number;
 }
+
+type ChartType = "audienceRetention" | "peakEngagement";
+type EngagementMetric = "views" | "likes" | "comments";
 
 export function ChartAreaInteractive({ videoId }: ChartAreaInteractiveProps) {
   const isMobile = useIsMobile();
@@ -77,8 +91,12 @@ export function ChartAreaInteractive({ videoId }: ChartAreaInteractiveProps) {
     null,
   );
   const [chartDataPoints, setChartDataPoints] = React.useState<
-    RetentionDataPoint[]
+    ChartDataPoint[]
   >([]);
+  const [chartType, setChartType] =
+    React.useState<ChartType>("audienceRetention");
+  const [engagementMetric, setEngagementMetric] =
+    React.useState<EngagementMetric>("views");
 
   React.useEffect(() => {
     if (isMobile) {
@@ -109,19 +127,6 @@ export function ChartAreaInteractive({ videoId }: ChartAreaInteractiveProps) {
         }
         const data: AnalyticsData = await response.json();
         setAnalyticsData(data);
-
-        // Process audience retention data to fit chart format
-        if (data.audience_retention && data.audience_retention.retention_data) {
-          const processedData: RetentionDataPoint[] = Object.entries(
-            data.audience_retention.retention_data,
-          ).map(([timePercentage, retentionPercentage]) => ({
-            time: parseFloat(timePercentage), // Assuming keys are percentages as strings
-            retentionRate: parseFloat(retentionPercentage), // Assuming values are percentages as strings
-          }));
-          setChartDataPoints(processedData);
-        } else {
-          setChartDataPoints([]); // No retention data or incorrect format
-        }
       } catch (error: any) {
         console.error("Could not fetch video analytics for chart:", error);
         setAnalyticsError(
@@ -137,7 +142,38 @@ export function ChartAreaInteractive({ videoId }: ChartAreaInteractiveProps) {
     fetchAnalytics();
   }, [videoId]);
 
-  const filteredData = chartDataPoints; // No time range filtering for audience retention for now
+  React.useEffect(() => {
+    if (analyticsData) {
+      if (
+        chartType === "audienceRetention" &&
+        analyticsData.audience_retention
+      ) {
+        const processedData: ChartDataPoint[] =
+          analyticsData.audience_retention.map((item: any) => ({
+            date: item.date,
+            audienceRetention: item.avg_view_duration,
+          }));
+        setChartDataPoints(processedData);
+      } else if (
+        chartType === "peakEngagement" &&
+        analyticsData.peak_engagement_time
+      ) {
+        const processedData: ChartDataPoint[] =
+          analyticsData.peak_engagement_time.map((item: any) => ({
+            date: item.date,
+            peakEngagementViews: item.views,
+            peakEngagementLikes: item.likes,
+            peakEngagementComments: item.comments,
+            // You can add other engagement metrics here if needed
+          }));
+        setChartDataPoints(processedData);
+      } else {
+        setChartDataPoints([]);
+      }
+    }
+  }, [analyticsData, chartType, engagementMetric]);
+
+  const filteredData = chartDataPoints;
 
   if (loadingAnalytics) {
     return <div>Loading analytics chart...</div>;
@@ -147,118 +183,204 @@ export function ChartAreaInteractive({ videoId }: ChartAreaInteractiveProps) {
     return <div className="text-red-500">{analyticsError}</div>;
   }
 
+  if (!analyticsData) {
+    return <div>No analytics data available.</div>;
+  }
+
   if (
-    !analyticsData ||
-    !analyticsData.audience_retention ||
-    chartDataPoints.length === 0
+    chartType === "audienceRetention" &&
+    (!analyticsData.audience_retention || chartDataPoints.length === 0)
   ) {
     return <div>No audience retention data available for chart.</div>;
   }
 
+  if (
+    chartType === "peakEngagement" &&
+    (!analyticsData.peak_engagement_time || chartDataPoints.length === 0)
+  ) {
+    return <div>No peak engagement data available for chart.</div>;
+  }
+
+  const renderChart = () => {
+    if (chartType === "audienceRetention") {
+      return (
+        <AreaChart
+          data={filteredData}
+          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+        >
+          <defs>
+            <linearGradient
+              id="fillAudienceRetention"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="5%"
+                stopColor="var(--color-primary)"
+                stopOpacity={0.8}
+              />
+              <stop
+                offset="95%"
+                stopColor="var(--color-primary)"
+                stopOpacity={0.1}
+              />
+            </linearGradient>
+          </defs>
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="date"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            minTickGap={32}
+          />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            label={{
+              value: "Avg View Duration (seconds)",
+              angle: -90,
+              position: "insideLeft",
+              offset: -10,
+            }}
+          />
+          <Tooltip
+            content={
+              <ChartTooltipContent
+                labelFormatter={(value) => `Date: ${value}`}
+                valueFormatter={(value) => `${value} seconds`}
+                itemStyle={{ color: "var(--primary)" }}
+              />
+            }
+          />
+          <Area
+            dataKey="audienceRetention"
+            type="natural"
+            fill="url(#fillAudienceRetention)"
+            stroke="red" // Use red directly here
+            stackId="a"
+          />
+          <Legend />
+        </AreaChart>
+      );
+    } else if (chartType === "peakEngagement") {
+      return (
+        <AreaChart
+          data={filteredData}
+          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+        >
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="date"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={8}
+            minTickGap={32}
+          />
+          <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+          <Tooltip
+            content={
+              <ChartTooltipContent
+                labelFormatter={(value) => `Date: ${value}`}
+                itemStyle={{ color: "var(--primary)" }}
+                formatter={(value, name) => [
+                  `${value}`,
+                  chartConfig[
+                    `peakEngagement${name.charAt(0).toUpperCase() + name.slice(1)}`
+                  ]?.label || name,
+                ]}
+              />
+            }
+          />
+          <Area
+            type="monotone"
+            dataKey="peakEngagementViews"
+            stroke="green" // Use green directly here
+            fill="green"
+            fillOpacity={0.6}
+            name="views"
+          />
+          <Area
+            type="monotone"
+            dataKey="peakEngagementLikes"
+            stroke="orange" // Use orange directly here
+            fill="orange"
+            fillOpacity={0.6}
+            name="likes"
+          />
+          <Area
+            type="monotone"
+            dataKey="peakEngagementComments"
+            stroke="blue" // Use blue directly here
+            fill="blue"
+            fillOpacity={0.6}
+            name="comments"
+          />
+          <Legend />
+        </AreaChart>
+      );
+    }
+    return null;
+  };
+
   return (
     <Card className="@container/card">
       <CardHeader>
-        <CardTitle>Audience Retention</CardTitle>
-        <CardDescription>Video audience retention over time</CardDescription>
-        {/* Time range selection - might not be relevant for audience retention chart */}
-        {/* <CardAction>
-          <ToggleGroup
-            type="single"
-            value={timeRange}
-            onValueChange={setTimeRange}
-            variant="outline"
-            className="hidden *:data-[slot=toggle-group-item]:!px-4 @[767px]/card:flex"
+        <CardTitle>
+          {chartType === "audienceRetention"
+            ? "Audience Retention"
+            : "Peak Engagement Time"}
+        </CardTitle>
+        <CardDescription>
+          {chartType === "audienceRetention"
+            ? "Video audience retention over time (Average View Duration)"
+            : "Video peak engagement metrics over time (Views, Likes, Comments)"}
+        </CardDescription>
+        <CardAction className="flex gap-2">
+          <Select
+            value={chartType}
+            onValueChange={(value) => setChartType(value as ChartType)}
           >
-            <ToggleGroupItem value="90d">Last 3 months</ToggleGroupItem>
-            <ToggleGroupItem value="30d">Last 30 days</ToggleGroupItem>
-            <ToggleGroupItem value="7d">Last 7 days</ToggleGroupItem>
-          </ToggleGroup>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger
-              className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
-              size="sm"
-              aria-label="Select a value"
-            >
-              <SelectValue placeholder="Last 3 months" />
+            <SelectTrigger className="w-[180px]" size="sm">
+              <SelectValue placeholder="Audience Retention" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="90d" className="rounded-lg">
-                Last 3 months
+            <SelectContent>
+              <SelectItem value="audienceRetention">
+                Audience Retention
               </SelectItem>
-              <SelectItem value="30d" className="rounded-lg">
-                Last 30 days
-              </SelectItem>
-              <SelectItem value="7d" className="rounded-lg">
-                Last 7 days
+              <SelectItem value="peakEngagement">
+                Peak Engagement Time
               </SelectItem>
             </SelectContent>
           </Select>
-        </CardAction> */}
+          {chartType === "peakEngagement" && (
+            <Select
+              value={engagementMetric}
+              onValueChange={(value) =>
+                setEngagementMetric(value as EngagementMetric)
+              }
+            >
+              <SelectTrigger className="w-[120px]" size="sm">
+                <SelectValue placeholder="Views" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="views">Views</SelectItem>
+                <SelectItem value="likes">Likes</SelectItem>
+                <SelectItem value="comments">Comments</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </CardAction>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer
           config={chartConfig}
           className="aspect-auto h-[250px] w-full"
         >
-          <AreaChart data={filteredData}>
-            {" "}
-            {/* Use fetched and processed chartDataPoints */}
-            <defs>
-              <linearGradient id="fillRetention" x1="0" y1="0" x2="0" y2="1">
-                <stop
-                  offset="5%"
-                  stopColor="var(--color-primary)"
-                  stopOpacity={0.8}
-                />
-                <stop
-                  offset="95%"
-                  stopColor="var(--color-primary)"
-                  stopOpacity={0.1}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="time" // Use 'time' from processed data points
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              minTickGap={32}
-              label={{
-                value: "Video Time (%)",
-                position: "bottom",
-                offset: -10,
-              }} // X-axis label
-            />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickMargin={8}
-              label={{
-                value: "Retention Rate (%)",
-                angle: -90,
-                position: "insideLeft",
-                offset: -10,
-              }} // Y-axis label
-            />
-            <Tooltip
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(value) => `Time: ${value}%`} // Format time in tooltip
-                  valueFormatter={(value) => `${value}%`} // Format retention rate in tooltip
-                  indicator="dot"
-                  itemStyle={{ color: "var(--primary)" }}
-                />
-              }
-            />
-            <Area
-              dataKey="retentionRate" // Use 'retentionRate' from processed data points
-              type="natural"
-              fill="url(#fillRetention)"
-              stroke="var(--color-primary)"
-              stackId="a"
-            />
-          </AreaChart>
+          {renderChart()}
         </ChartContainer>
       </CardContent>
     </Card>

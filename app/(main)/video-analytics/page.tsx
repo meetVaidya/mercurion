@@ -72,60 +72,70 @@ export default function Page() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {videos.map((video) => (
-          <Card
-            key={video.id}
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => handleVideoCardClick(video.id)}
-          >
-            <CardHeader className="flex flex-row items-start">
-              {video.thumbnail_url && (
-                <Image
-                  src={video.thumbnail_url}
-                  alt={`Thumbnail for ${video.title}`}
-                  width={120}
-                  height={90}
-                  className="rounded-md mr-4"
-                />
-              )}
-              <div>
-                <CardTitle>{video.title}</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <CardDescription className="line-clamp-2 text-sm text-muted-foreground">
-                {video.description}
-              </CardDescription>
-              <div className="mt-2 text-xs">
-                <div>
-                  <strong>Privacy:</strong> {video.privacy_status}
-                </div>
-                <div>
-                  <strong>Views:</strong> {video.view_count}
-                </div>
-                <div>
-                  <strong>Likes:</strong> {video.like_count}
-                </div>
-                <div>
-                  <strong>Comments:</strong> {video.comment_count}
-                </div>
-                {video.tags && video.tags.length > 0 && (
-                  <div>
-                    <strong>Tags:</strong> {video.tags.join(", ")}
-                  </div>
+        {[...videos]
+          .sort(
+            (a, b) => parseInt(b.view_count, 10) - parseInt(a.view_count, 10),
+          )
+          .map((video) => (
+            <Card
+              key={video.id}
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => handleVideoCardClick(video.id)}
+            >
+              <CardHeader className="flex flex-col items-center">
+                {video.thumbnail_url && (
+                  <Image
+                    src={video.thumbnail_url}
+                    alt={`Thumbnail for ${video.title}`}
+                    width={240}
+                    height={180}
+                    className="rounded-md mb-2"
+                  />
                 )}
+                <CardTitle className="text-lg text-center">
+                  {video.title}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <div className="font-semibold">Privacy:</div>
+                  <div>{video.privacy_status}</div>
+                </div>
+                <div>
+                  <div className="font-semibold">Views:</div>
+                  <div>{video.view_count}</div>
+                </div>
+                <div>
+                  <div className="font-semibold">Likes:</div>
+                  <div>{video.like_count}</div>
+                </div>
+                <div>
+                  <div className="font-semibold">Comments:</div>
+                  <div>{video.comment_count}</div>
+                </div>
                 {video.scheduled_time && (
                   <div>
-                    <strong>Scheduled:</strong> {video.scheduled_time}
+                    <div className="font-semibold">Scheduled:</div>
+                    <div>{video.scheduled_time}</div>
                   </div>
                 )}
-              </div>
-            </CardContent>
-            <CardFooter>
-              <CardDescription>Video ID: {video.id}</CardDescription>
-            </CardFooter>
-          </Card>
-        ))}
+                {video.tags && video.tags.length > 0 && (
+                  <div className="col-span-2">
+                    <div className="font-semibold">Tags:</div>
+                    <div>{video.tags.join(", ")}</div>
+                  </div>
+                )}
+                <div className="col-span-2 mt-2">
+                  <CardDescription className="line-clamp-2 text-sm text-muted-foreground">
+                    {video.description}
+                  </CardDescription>
+                </div>
+              </CardContent>
+              <CardFooter>
+                <CardDescription>Video ID: {video.id}</CardDescription>
+              </CardFooter>
+            </Card>
+          ))}
       </div>
     );
   };
