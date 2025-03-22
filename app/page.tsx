@@ -18,7 +18,7 @@ import { ConnectWorld } from "@/components/connect-world";
 const HomePage = () => {
   const [error, setError] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [checkingAuth, setCheckingAuth] = useState<boolean>(true);
+  const [checkingAuth, setCheckingAuth] = useState<boolean>(false);
   const router = useRouter();
 
   // Check authentication status when the component mounts
@@ -103,26 +103,28 @@ const HomePage = () => {
           one place. Get started by authenticating your YouTube account.
         </p>
 
-        {checkingAuth ? (
-          <div className="text-center">
-            <p className="mb-4">Checking authentication status...</p>
-            <Loader2 className="h-6 w-6 mx-auto animate-spin" />
-          </div>
-        ) : !isAuthenticated ? (
-          <Button
-            variant="default"
-            size="lg"
-            onClick={handleAuthClick}
-            disabled={checkingAuth}
-          >
-            Authenticate with YouTube
-          </Button>
-        ) : (
-          <div className="text-center">
-            <p>Authenticated. Redirecting to dashboard...</p>
-            <Loader2 className="h-6 w-6 mx-auto animate-spin" />
-          </div>
-        )}
+        <div className="text-center">
+          {checkingAuth ? (
+            <>
+              <p className="mb-4">Checking authentication status...</p>
+              <Loader2 className="h-6 w-6 mx-auto animate-spin" />
+            </>
+          ) : !isAuthenticated ? (
+            <Button
+              variant="default"
+              size="lg"
+              onClick={handleAuthClick}
+              disabled={checkingAuth}
+            >
+              Authenticate with YouTube
+            </Button>
+          ) : (
+            <>
+              <p>Authenticated. Redirecting to dashboard...</p>
+              <Loader2 className="h-6 w-6 mx-auto animate-spin" />
+            </>
+          )}
+        </div>
       </main>
 
       <div className="h-[40rem] flex items-center justify-center">

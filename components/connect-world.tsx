@@ -9,7 +9,7 @@ export function ConnectWorld() {
         <p className="font-bold text-xl md:text-4xl dark:text-white text-black">
           Connect to your{" "}
           <span className="text-neutral-400">
-            {"AUDIENCE".split("").map((word, idx) => (
+            {" AUDIENCE".split("").map((word, idx) => (
               <motion.span
                 key={idx}
                 className="inline-block"
