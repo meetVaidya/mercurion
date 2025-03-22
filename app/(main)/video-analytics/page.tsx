@@ -1,7 +1,5 @@
 "use client";
 
-import { SectionCards } from "@/components/section-cards";
-import { ChartAreaInteractive } from "@/components/chart-area-interactive";
 import {
   Card,
   CardContent,
@@ -13,6 +11,8 @@ import {
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { SectionCards } from "@/components/analytics-section-cards";
+import { ChartAreaInteractive } from "@/components/analytics-chart";
 
 interface Video {
   id: string;
@@ -131,16 +131,14 @@ export default function Page() {
   };
 
   const renderVideoAnalytics = (videoId: string) => {
-    // In a real application, you would fetch video details based on videoId here.
-    // For now, we'll just pass the videoId down to the components.
     return (
       <div className="flex flex-1 flex-col">
         <div className="@container/main flex flex-1 flex-col gap-2">
           <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-            <SectionCards videoId={videoId} />
+            <SectionCards videoId={videoId} /> {/* Pass videoId prop */}
             <div className="px-4 lg:px-6">
               <ChartAreaInteractive videoId={videoId} />
-              {/* Pass videoId as prop */}
+              {/* Pass videoId prop */}
             </div>
           </div>
         </div>
